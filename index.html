@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src https:; connect-src https://api.github.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#141618">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Car Finder">
+  <title>Car Finder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="lock" class="lock" hidden>
+  <div class="lock-card">
+    <p class="lock-mark">Car Finder</p>
+    <form id="lock-create" hidden autocomplete="off">
+      <h2>Create a password</h2>
+      <p class="help">It locks this site and encrypts your GitHub token on this device. Nothing is sent anywhere.</p>
+      <label>Password <input type="password" id="create-pass-1" autocomplete="new-password" minlength="6" required></label>
+      <label>Again <input type="password" id="create-pass-2" autocomplete="new-password" minlength="6" required></label>
+      <p class="error" id="create-error" hidden></p>
+      <button type="submit" class="primary">Set password</button>
+    </form>
+    <form id="lock-unlock" hidden autocomplete="off">
+      <h2>Enter your password</h2>
+      <label>Password <input type="password" id="unlock-pass" autocomplete="current-password" required autofocus></label>
+      <p class="error" id="unlock-error" hidden></p>
+      <button type="submit" class="primary">Unlock</button>
+      <button type="button" class="link" id="forgot-password">Forgot it? Clear this device</button>
+    </form>
+    <p class="help" id="lock-unsupported" hidden>This browser can't do the encryption the lock needs (it requires a secure, modern browser). Open the site in Safari or Chrome over https.</p>
+  </div>
+</div>
+
+<header class="top">
+  <div class="top-inner">
+    <h1 class="brand">Car Finder</h1>
+    <nav class="tabs" aria-label="Sections">
+      <button type="button" class="tab is-active" data-view="search">Search</button>
+      <button type="button" class="tab" data-view="results">Results</button>
+      <button type="button" class="tab" data-view="past">Past searches</button>
+      <button type="button" class="tab" data-view="saved">Saved</button>
+      <button type="button" class="tab" data-view="settings">Settings</button>
+    </nav>
+    <button type="button" class="lock-btn" id="lock-now" title="Lock the site">Lock</button>
+  </div>
+</header>
+
+<main class="main">
+  <p class="notice" id="global-notice" hidden></p>
+
+  <section id="view-search" class="view">
+    <form id="search-form" autocomplete="off">
+      <div class="group">
+        <label class="field grow">
+          <span>Car</span>
+          <input type="text" id="car" value="Mercedes-Benz C-Class" placeholder="Make and model, plus keywords such as C43 or AMG Line" maxlength="80" required>
+          <small>Any make and model. Add keywords like "C43" or "AMG Line" if you want.</small>
+        </label>
+      </div>
+
+      <div class="group two">
+        <label class="field">
+          <span>Max price (£)</span>
+          <input type="number" id="price_max" value="20000" min="500" step="100" inputmode="numeric" required>
+        </label>
+        <label class="field">
+          <span>Min price (£), optional</span>
+          <input type="number" id="price_min" min="0" step="100" inputmode="numeric" placeholder="Any">
+        </label>
+      </div>
+
+      <div class="group two">
+        <label class="field">
+          <span>Max mileage</span>
+          <input type="number" id="mileage_max" value="70000" min="0" step="1000" inputmode="numeric" required>
+        </label>
+        <label class="field">
+          <span>Year from</span>
+          <input type="number" id="year_min" value="2019" min="1980" max="2100" inputmode="numeric" required>
+        </label>
+      </div>
+
+      <div class="group two">
+        <label class="field">
+          <span>Year to, optional</span>
+          <input type="number" id="year_max" min="1980" max="2100" inputmode="numeric" placeholder="Newest">
+        </label>
+        <label class="field check">
+          <input type="checkbox" id="include_new" checked>
+          <span>Include brand-new cars</span>
+        </label>
+      </div>
+
+      <div class="group two">
+        <label class="field">
+          <span>Finish</span>
+          <select id="finish">
+            <option value="matte" selected>Matte only</option>
+            <option value="matte_black">Matte black only</option>
+            <option value="any">Any finish</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Seller</span>
+          <select id="sellers">
+            <option value="dealers" selected>Dealers only</option>
+            <option value="all">Dealers and private sellers</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="group two">
+        <label class="field">
+          <span>Engine from (litres), optional</span>
+          <input type="number" id="engine_min" min="0.5" max="9" step="0.1" inputmode="decimal" placeholder="Any">
+        </label>
+        <label class="field">
+          <span>Engine to (litres), optional</span>
+          <input type="number" id="engine_max" min="0.5" max="9" step="0.1" inputmode="decimal" placeholder="Any">
+        </label>
+      </div>
+
+      <div class="group two">
+        <label class="field">
+          <span>Body type</span>
+          <select id="body">
+            <option value="any" selected>Any</option>
+            <option value="coupe">Coupe</option>
+            <option value="saloon">Saloon</option>
+            <option value="estate">Estate</option>
+            <option value="convertible">Convertible</option>
+            <option value="hatchback">Hatchback</option>
+            <option value="suv">SUV</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Gearbox</span>
+          <select id="gearbox">
+            <option value="any" selected>Any</option>
+            <option value="automatic">Automatic</option>
+            <option value="manual">Manual</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="group two">
+        <label class="field">
+          <span>Postcode district, optional</span>
+          <input type="text" id="postcode_district" maxlength="4" placeholder="e.g. HA9" autocapitalize="characters">
+          <small>Just the first half. Leave empty for nationwide.</small>
+        </label>
+        <label class="field">
+          <span>Max distance (miles)</span>
+          <input type="number" id="max_distance_miles" min="1" max="1000" step="5" inputmode="numeric" placeholder="Any">
+        </label>
+      </div>
+
+      <h2 class="section-title">Finance estimate</h2>
+      <div class="group two">
+        <label class="field">
+          <span>Deposit</span>
+          <div class="combo">
+            <input type="number" id="deposit_value" value="10" min="0" step="0.5" inputmode="decimal">
+            <select id="deposit_type" aria-label="Deposit unit">
+              <option value="percent" selected>% of price</option>
+              <option value="gbp">£</option>
+            </select>
+          </div>
+        </label>
+        <label class="field">
+          <span>Term (months)</span>
+          <input type="number" id="term_months" value="48" min="24" max="60" step="1" inputmode="numeric">
+        </label>
+      </div>
+      <div class="group two">
+        <label class="field">
+          <span>APR estimate (%)</span>
+          <input type="number" id="apr" value="18.5" min="0" max="99.9" step="0.1" inputmode="decimal">
+          <small>Zuto's representative APR on 8 Nov 2026. Replace it with your real quote.</small>
+        </label>
+        <label class="field">
+          <span>PCP final payment (% of price)</span>
+          <input type="number" id="balloon_percent" value="35" min="0" max="80" step="1" inputmode="decimal">
+        </label>
+      </div>
+
+      <p class="error" id="search-error" hidden></p>
+      <div class="actions">
+        <button type="submit" class="primary big" id="search-btn">Search</button>
+        <button type="button" class="secondary" id="save-btn">Save this search</button>
+        <button type="button" class="secondary" id="to-settings">Settings</button>
+      </div>
+      <p class="help" id="daily-count"></p>
+    </form>
+  </section>
+
+  <section id="view-results" class="view" hidden>
+    <div id="results-empty" class="empty">
+      <h2>No search open</h2>
+      <p>Run a search, or open one from Past searches.</p>
+    </div>
+    <div id="status-card" class="status" hidden>
+      <div class="status-row">
+        <span class="dot"></span>
+        <strong id="status-label">Queued</strong>
+        <span class="elapsed" id="status-elapsed">0:00</span>
+      </div>
+      <ol class="phases">
+        <li data-phase="queued">Queued</li>
+        <li data-phase="searching">Searching</li>
+        <li data-phase="checking">Checking</li>
+        <li data-phase="done">Done</li>
+      </ol>
+      <p class="help" id="status-help">You can leave this page. The search carries on in GitHub and will be here under Past searches.</p>
+      <p class="error" id="status-error" hidden></p>
+    </div>
+    <div id="results" hidden>
+      <div class="results-head">
+        <div>
+          <h2 id="results-title">Results</h2>
+          <p class="meta" id="results-meta"></p>
+        </div>
+        <label class="sort">
+          <span>Sort</span>
+          <select id="sort">
+            <option value="value" selected>Best value</option>
+            <option value="price">Price</option>
+            <option value="mileage">Mileage</option>
+            <option value="distance">Distance</option>
+          </select>
+        </label>
+      </div>
+      <p class="banner" id="results-banner" hidden></p>
+      <p class="banner warn" id="results-budget" hidden></p>
+      <h3 class="list-title">Matches <span id="matches-count" class="count"></span></h3>
+      <p class="help">Every rule met. Ranked by value, then finish (factory matte, wrap, satin), then mileage.</p>
+      <div id="matches" class="cards"></div>
+      <h3 class="list-title">Near misses <span id="near-count" class="count"></span></h3>
+      <p class="help">Exactly one rule missed by a small margin. Each card says which.</p>
+      <div id="near-misses" class="cards"></div>
+      <h3 class="list-title">Sites checked</h3>
+      <p class="help" id="coverage-note"></p>
+      <div id="sites" class="sites"></div>
+      <p class="help" id="agent-notes"></p>
+    </div>
+  </section>
+
+  <section id="view-past" class="view" hidden>
+    <div class="results-head">
+      <h2>Past searches</h2>
+      <button type="button" class="secondary" id="refresh-past">Refresh</button>
+    </div>
+    <p class="help">Every run the engine has recorded, newest first. Tap one to open its results.</p>
+    <div id="past-list" class="list"></div>
+  </section>
+
+  <section id="view-saved" class="view" hidden>
+    <div class="results-head">
+      <h2>Saved searches</h2>
+      <button type="button" class="secondary" id="refresh-saved">Refresh</button>
+    </div>
+    <p class="help">These re-run every morning at 06:17 UTC. You get a GitHub issue (email and app notification) only when something new turns up or a price drops. Up to 5.</p>
+    <div id="saved-list" class="list"></div>
+  </section>
+
+  <section id="view-settings" class="view" hidden>
+    <h2>Settings</h2>
+
+    <div class="card">
+      <h3>GitHub token</h3>
+      <p class="help">A fine-grained token for <strong>car-finder-engine</strong> only, with Actions: read and write, Contents: read-only, 90-day expiry. It stays on this device, encrypted with your password.</p>
+      <p id="token-state" class="meta"></p>
+      <label class="field">
+        <span>Paste a new token</span>
+        <input type="password" id="token-input" autocomplete="off" placeholder="github_pat_…">
+      </label>
+      <div class="actions">
+        <button type="button" class="primary" id="token-save">Save token</button>
+        <button type="button" class="secondary" id="token-test">Test connection</button>
+        <button type="button" class="danger" id="token-forget">Forget token</button>
+      </div>
+      <p id="token-result" class="meta"></p>
+      <details class="howto">
+        <summary>How to make a new token</summary>
+        <ol>
+          <li>GitHub → your profile photo → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.</li>
+          <li>Name: Car Finder. Expiration: 90 days. Resource owner: you.</li>
+          <li>Repository access: Only select repositories → car-finder-engine.</li>
+          <li>Repository permissions: Actions → Read and write. Contents → Read-only. (Metadata is added automatically.)</li>
+          <li>Generate, copy it, paste it above and tap Save token.</li>
+        </ol>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3>Search model</h3>
+      <label class="field">
+        <span>Model for manual searches</span>
+        <select id="model">
+          <option value="claude-sonnet-5-5" selected>Claude Sonnet 5.5 (default, lowest cost)</option>
+          <option value="claude-opus-5-5">Claude Opus 5.5</option>
+          <option value="claude-fable-5-1">Claude Fable 5.1</option>
+          <option value="claude-haiku-5-5">Claude Haiku 5.5 (cheapest)</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Model for the daily scan</span>
+        <select id="daily-model">
+          <option value="claude-sonnet-5-5" selected>Claude Sonnet 5.5</option>
+          <option value="claude-opus-5-5">Claude Opus 5.5</option>
+          <option value="claude-fable-5-1">Claude Fable 5.1</option>
+          <option value="claude-haiku-5-5">Claude Haiku 5.5 (cheapest)</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="card">
+      <h3>Usage and budget</h3>
+      <p class="meta" id="usage-line">Usage loads once a token is saved.</p>
+      <div class="bar"><div class="bar-fill" id="usage-bar"></div></div>
+      <label class="field">
+        <span>Monthly budget (US$ of your API credits)</span>
+        <input type="number" id="budget" value="100" min="1" max="10000" step="5" inputmode="decimal">
+        <small>Runs warn at 80% and stop at 100%. Resets each calendar month.</small>
+      </label>
+      <div class="actions">
+        <button type="button" class="primary" id="config-save">Save model and budget to the engine</button>
+      </div>
+      <p id="config-result" class="meta"></p>
+      <p class="help">GitHub Actions minutes are separate: see the repo's Settings → Billing on GitHub.</p>
+    </div>
+
+    <div class="card">
+      <h3>Password</h3>
+      <div class="actions">
+        <button type="button" class="secondary" id="change-password">Change password</button>
+        <button type="button" class="secondary" id="lock-now-2">Lock now</button>
+      </div>
+      <p class="help">The site locks itself after 30 minutes without activity and when you close the tab.</p>
+    </div>
+
+    <div class="card">
+      <h3>This device</h3>
+      <div class="actions">
+        <button type="button" class="danger" id="reset-device">Clear everything on this device</button>
+      </div>
+      <p class="help">Removes the password, the token and your remembered settings from this browser. Nothing in GitHub changes.</p>
+    </div>
+  </section>
+</main>
+
+<div id="modal" class="modal" hidden>
+  <form class="modal-card" id="modal-form">
+    <h3 id="modal-title"></h3>
+    <p class="help" id="modal-text"></p>
+    <div id="modal-fields"></div>
+    <p class="error" id="modal-error" hidden></p>
+    <div class="actions">
+      <button type="submit" class="primary" id="modal-ok">OK</button>
+      <button type="button" class="secondary" id="modal-cancel">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "car-finder",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Car Finder website (GitHub Pages). Plain HTML, CSS and JavaScript, no build step.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}
