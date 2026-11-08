@@ -271,6 +271,14 @@ async function pollOnce() {
         }
       }
     }
+    // Whatever the Actions API says, a committed results file means the run is finished.
+    const early = await gh.getJson(t, state.owner, `results/${state.current.request_id}.json`).catch(() => null);
+    if (early) {
+      state.current.finished_at = early.finished_at || new Date().toISOString();
+      renderResults(early);
+      showStatus(early.status === "done" ? "done" : "failed", early.status === "done" ? "" : early.error || `Run ended with status ${early.status}.`);
+      return finishCurrent();
+    }
     if (state.current.run_id) {
       const run = await gh.getRun(t, state.owner, state.current.run_id);
       if (run.status === "completed") {
@@ -294,7 +302,7 @@ async function pollOnce() {
       handleError(error, "poll");
       return stopPolling();
     }
-    showStatus(state.current.run_id ? "searching" : "queued", `Couldn't check progress just now (${error.message}). Retrying.`);
+    showStatus(state.current.run_id ? "searching" : "queued", `Couldn't check progress just now: ${error.message} Retrying every 10 seconds; the search itself carries on in GitHub.`);
   }
   state.pollTimer = setTimeout(pollOnce, POLL_MS);
 }
@@ -595,6 +603,25 @@ async function testToken() {
   }
 }
 
+async function runDiagnostics() {
+  const out = $("diagnostics");
+  clear(out);
+  out.hidden = false;
+  out.append(el("p", { class: "meta", text: "Running checks…" }));
+  try {
+    const t = await token();
+    const owner = state.owner || (await gh.whoami(t)).login;
+    state.owner = owner;
+    const lines = await gh.diagnostics(t, owner);
+    clear(out);
+    for (const line of lines) out.append(el("div", { class: line.startsWith("OK") ? "diag ok" : "diag bad", text: line }));
+    out.append(el("p", { class: "help", text: "If anything failed, open the token on GitHub (Settings → Developer settings → Fine-grained tokens), check it covers car-finder-engine with Actions: Read and write and Contents: Read-only, then copy the message above to Claude." }));
+  } catch (error) {
+    clear(out);
+    out.append(el("div", { class: "diag bad", text: error.message }));
+  }
+}
+
 async function forgetToken() {
   const ok = await modal({ title: "Forget the token?", text: "The site will stop working on this device until you paste a new one. Also revoke it on GitHub if the device is lost.", okText: "Forget token" });
   if (!ok) return;
@@ -845,6 +872,7 @@ function bind() {
   $("token-save").addEventListener("click", saveToken);
   $("token-test").addEventListener("click", testToken);
   $("token-forget").addEventListener("click", forgetToken);
+  $("token-diagnose").addEventListener("click", runDiagnostics);
   $("config-save").addEventListener("click", saveConfig);
   $("model").addEventListener("change", () => saveSettings({ model: $("model").value, touchedModel: true }));
   $("daily-model").addEventListener("change", () => saveSettings({ daily_model: $("daily-model").value }));

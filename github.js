@@ -7,20 +7,22 @@ export const SAVE_WORKFLOW = "save-search.yml";
 export const DAILY_WORKFLOW = "daily-scan.yml";
 
 export class GitHubError extends Error {
-  constructor(message, status, kind) {
-    super(message);
+  constructor(message, status, kind, detail = "", request = "") {
+    super(request ? `${message} GitHub said: "${detail}" (${request}).` : message);
     this.status = status;
     this.kind = kind; // "token" | "forbidden" | "notfound" | "rate" | "network" | "other"
+    this.detail = detail;
+    this.request = request;
   }
 }
 
-function classify(status, body) {
-  const message = (body && body.message) || `GitHub returned ${status}`;
-  if (status === 401) return new GitHubError("Your GitHub token was rejected. It may have expired or been revoked.", status, "token");
-  if (status === 403 && /rate limit/i.test(message)) return new GitHubError("GitHub's rate limit was hit. Wait a few minutes and try again.", status, "rate");
-  if (status === 403) return new GitHubError("Your token doesn't have permission for that. It needs Actions: read and write, and Contents: read-only on car-finder-engine.", status, "forbidden");
-  if (status === 404) return new GitHubError("Not found. Check that car-finder-engine exists and the token can see it.", status, "notfound");
-  return new GitHubError(message, status, "other");
+function classify(status, body, request) {
+  const detail = (body && body.message) || `HTTP ${status}`;
+  if (status === 401) return new GitHubError("Your GitHub token was rejected. It may have expired or been revoked.", status, "token", detail, request);
+  if (status === 403 && /rate limit|abuse/i.test(detail)) return new GitHubError("GitHub's rate limit was hit. Wait a few minutes and try again.", status, "rate", detail, request);
+  if (status === 403) return new GitHubError("GitHub refused this call for your token.", status, "forbidden", detail, request);
+  if (status === 404) return new GitHubError("Not found. Check that car-finder-engine exists and the token can see it.", status, "notfound", detail, request);
+  return new GitHubError("GitHub returned an error.", status, "other", detail, request);
 }
 
 export async function api(token, path, { method = "GET", body, raw = false, headers = {} } = {}) {
@@ -42,7 +44,7 @@ export async function api(token, path, { method = "GET", body, raw = false, head
   try {
     response = await fetch(`${API}${path}`, init);
   } catch (error) {
-    throw new GitHubError("Couldn't reach GitHub. Check your connection.", 0, "network");
+    throw new GitHubError("Couldn't reach GitHub. Check your connection.", 0, "network", String(error && error.message || ""), `${method} ${path.split("?")[0]}`);
   }
   const expiry = response.headers.get("github-authentication-token-expiration");
   if (response.status === 204) return { data: null, expiry };
@@ -55,7 +57,7 @@ export async function api(token, path, { method = "GET", body, raw = false, head
       data = raw ? text : null;
     }
   }
-  if (!response.ok) throw classify(response.status, data);
+  if (!response.ok) throw classify(response.status, data, `${method} ${path.split("?")[0]}`);
   return { data, expiry, status: response.status };
 }
 
@@ -122,4 +124,38 @@ export async function getJson(token, owner, path) {
 export async function listRecentRuns(token, owner, workflow, perPage = 20) {
   const { data } = await api(token, `/repos/${owner}/${ENGINE_REPO}/actions/workflows/${workflow}/runs?per_page=${perPage}`);
   return (data && data.workflow_runs) || [];
+}
+
+export async function diagnostics(token, owner) {
+  const checks = [
+    ["Who am I", "/user"],
+    ["See car-finder-engine", `/repos/${owner}/${ENGINE_REPO}`],
+    ["List workflows (Actions: read)", `/repos/${owner}/${ENGINE_REPO}/actions/workflows`],
+    ["List search runs (Actions: read)", `/repos/${owner}/${ENGINE_REPO}/actions/workflows/${SEARCH_WORKFLOW}/runs?per_page=1`],
+    ["Read results/index.json (Contents: read)", `/repos/${owner}/${ENGINE_REPO}/contents/results/index.json`],
+    ["Read config.json (Contents: read)", `/repos/${owner}/${ENGINE_REPO}/contents/config.json`],
+  ];
+  const lines = [];
+  let runId = null;
+  for (const [label, path] of checks) {
+    try {
+      const { data } = await api(token, path);
+      if (path.includes("/runs?") && data && data.workflow_runs && data.workflow_runs[0]) runId = data.workflow_runs[0].id;
+      lines.push(`OK: ${label}`);
+    } catch (error) {
+      lines.push(`FAILED: ${label}: ${error.detail || error.message}`);
+    }
+  }
+  if (runId) {
+    for (const [label, path] of [["Read one run (Actions: read)", `/repos/${owner}/${ENGINE_REPO}/actions/runs/${runId}`],
+                                 ["Read that run's jobs (Actions: read)", `/repos/${owner}/${ENGINE_REPO}/actions/runs/${runId}/jobs`]]) {
+      try {
+        await api(token, path);
+        lines.push(`OK: ${label}`);
+      } catch (error) {
+        lines.push(`FAILED: ${label}: ${error.detail || error.message}`);
+      }
+    }
+  }
+  return lines;
 }

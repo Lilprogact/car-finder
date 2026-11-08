@@ -195,6 +195,10 @@ button:disabled { opacity: 0.55; cursor: default; }
 
 /* Settings */
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--pad); margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.diagnostics { display: grid; gap: 4px; }
+.diag { font-size: 13px; padding: 6px 10px; border-radius: 8px; background: var(--surface-2); }
+.diag.ok { color: var(--pass); }
+.diag.bad { color: var(--fail); }
 .howto summary { color: var(--muted); font-size: 13px; cursor: pointer; }
 .howto ol { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
 .bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
